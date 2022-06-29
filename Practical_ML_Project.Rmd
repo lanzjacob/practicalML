@@ -1,0 +1,112 @@
+---
+title: "Course Project: Practical Machine Learning"
+author: "L. Jacob"
+date: "June 29, 2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Overview
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, the goal is to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways.
+
+## Loading the Dataset
+
+```{r, include=FALSE}
+#Load the required libraries
+library(caret)
+```
+
+The train and test data sets were obtained from the links provided. 
+
+```{r, echo=TRUE}
+train_data <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv")
+head(train_data[,0:10])
+test_data <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv")
+head(test_data[,0:10])
+```
+
+## Exploring the Data
+
+Upon checking the dimensions of the data sets, we can see that the train set consists of **19622** observations of **160** variables while the test set have **20** observations of **160** variables.
+
+```{r, echo=TRUE}
+dim(train_data)
+dim(test_data)
+```
+The variables consist of data from accelerometers on the belt, forearm, arm, and dumbell of **6 unique participants**.
+
+```{r, echo=TRUE}
+unique(train_data$user_name)
+
+```
+
+## Cleaning the Data
+
+A. Remove the columns with null values. *Result: 93 variables*
+
+```{r, echo=TRUE}
+train_data = train_data[ , colSums(is.na(train_data)) == 0]
+dim(train_data)
+```
+
+B. Remove the columns with near zero variance values. *Result: 59 variables*
+
+```{r, echo=TRUE}
+near_zero_var_data <- nearZeroVar(train_data)
+train_data <- train_data[,-near_zero_var_data]
+dim(train_data)
+```
+
+C. Remove the columns which are irrelevant to the prediction. *Result: 53 variables*
+```{r, echo=TRUE}
+train_data <- train_data[ -c(1:6)]
+dim(train_data)
+```
+
+
+## Splitting the Data
+```{r, echo=TRUE}
+inTrain <- createDataPartition(train_data$classe, p=0.7, list=F)
+train_set <- train_data[inTrain,]
+validation_set <- train_data[-inTrain,]
+```
+
+After splitting the data, the number of observations allocated for training is **`r nrow(train_set)`** while for validation is **`r nrow(validation_set)`**. 
+
+
+## Building the Model
+
+The algorithm used is Random Forest with 5-fold Cross-validation. The model is trained on the training data set. 
+
+```{r, echo=TRUE}
+#Cross-validation
+control_RF <- trainControl(method="cv", 5)
+
+#Train the model
+model_RF <- train(classe~., data=train_set, method="rf", trControl = control_RF, tuneLength = 5, ntree=250)
+model_RF
+```
+
+The model is then used to predict the target variable for the validation data set. It exhibited an accuracy of **99.66%**.
+
+```{r, cache = T}
+predict_RF <- predict(model_RF, validation_set)
+confusionMatrix(factor(validation_set$classe), predict_RF)
+```
+
+## Predicting the Test Set
+
+The model is now applied to the test data to generate the predictions for the target variable, *'classe'*.
+
+```{r, cache = T}
+train_cols <- colnames(train_data)
+test_cols <- train_cols[train_cols != "classe"] 
+test_set <- test_data[, test_cols]
+
+test_pred <- predict(model_RF, test_set)
+test_pred
+```
