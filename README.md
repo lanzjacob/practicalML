@@ -1,5 +1,4 @@
-# practicalML
-Course Project for Practical Machine Learning
+# Course Project for Practical Machine Learning
 
 ## Files
 
